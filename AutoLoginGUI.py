@@ -9,6 +9,7 @@ import wx.adv
 import eventlet
 from eventlet.green.urllib.request import urlopen, Request
 from eventlet.timeout import Timeout
+from pyquery import PyQuery as pq
 
 TRAY_ICON = 'login.ico'
 
@@ -107,6 +108,7 @@ class MainFrame(wx.Frame):
         # URL constants
         self.testURL = 'http://119.10.39.100/Upload/20170509133345.jpg'
         self.ipURL = 'http://10.158.181.55/tools/ip.php?raw'
+        self.ipURLOfficial = 'http://10.108.255.249/srun_portal_pc.php?ac_id=1&phone=1'
 
     def autoLogin(self, event):
         # Function for automatic login
@@ -170,7 +172,7 @@ class MainFrame(wx.Frame):
         return result
 
     def getIPRemote(self):
-        # Get IP address from server
+        # Get IP address from custom server
         try:
             thread = self.pool.spawn(self.fetch, self.ipURL, {})
             content = thread.wait()
@@ -180,6 +182,24 @@ class MainFrame(wx.Frame):
                 self.logger.Log('Got intranet IP: %s' % content)
                 return content
         except Exception as e:
+            return None
+
+    def getIPRemoteOfficial(self):
+        # Get IP address from login page
+        try:
+            thread = self.pool.spawn(self.fetch, self.ipURLOfficial, {})
+            content = thread.wait()
+            if content is None:
+                self.logger.Log('Fail to fetch page: %s' % self.ipURLOfficial)
+                return None
+            else:
+                d = pq(content)
+                ip = d('input[name=user_ip]').attr('value')
+                print(d)
+                self.logger.Log('Got intranet IP: %s' % ip)
+                return ip
+        except Exception as e:
+            print(e)
             return None
 
     def fetch(self, url, header):
@@ -211,7 +231,7 @@ class MainFrame(wx.Frame):
         password = self.passwordControl.GetLineText(0)
         loginURL1 = 'http://10.108.255.249/include/auth_action.php'
         loginURL2 = 'http://10.108.255.249/get_permits.php'
-        ip = self.getIPRemote()
+        ip = self.getIPRemoteOfficial()
 
         if ip is None:
             return {'result': False, 'reason': self.NO_IP}
